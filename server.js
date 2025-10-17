@@ -5,7 +5,7 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
 // Usa el puerto que Render asigne, o 3000 como fallback local
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
 // Servir archivos estáticos desde el directorio actual
 app.use(express.static(__dirname));
@@ -13,6 +13,11 @@ app.use(express.static(__dirname));
 // Ruta explícita para servir index.html en la raíz
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
+});
+
+// Agregar rutas explícitas para game.js y otros archivos si es necesario
+app.get('/game.js', (req, res) => {
+    res.sendFile(__dirname + '/game.js');
 });
 
 // Objeto para guardar el estado de todos los jugadores
