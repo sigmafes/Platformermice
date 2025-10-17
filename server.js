@@ -7,16 +7,16 @@ const io = require('socket.io')(http);
 // Usa el puerto que Render asigne, o 3000 como fallback local
 const PORT = process.env.PORT || 3000; 
 
-// Servir archivos estáticos (el cliente HTML, game.js)
-app.use(express.static('public'));
+// *** CAMBIO CLAVE PARA LA OPCIÓN B: ***
+// Sirve archivos estáticos (game.js, socket.io.js) desde la raíz del proyecto.
+app.use(express.static(__dirname));
 
+// Ruta principal: Envía index.html desde la raíz del proyecto.
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
+    res.sendFile(__dirname + '/index.html');
 });
 
 // Objeto para guardar el estado de todos los jugadores
-// Clave: socket.id
-// Valor: { x: number, y: number, playerId: string }
 const players = {}; 
 
 io.on('connection', (socket) => {
@@ -24,7 +24,7 @@ io.on('connection', (socket) => {
 
     // Crea un nuevo jugador y añádelo al objeto 'players'
     players[socket.id] = {
-        x: Math.floor(Math.random() * 700) + 50, // Posición inicial aleatoria
+        x: Math.floor(Math.random() * 700) + 50, 
         y: 400,
         playerId: socket.id
     };
@@ -35,17 +35,13 @@ io.on('connection', (socket) => {
     // 2. Transmitir (broadcast) el nuevo jugador a todos los demás jugadores
     socket.broadcast.emit('newPlayer', players[socket.id]);
 
-    // ----------------------------------------------------
-    // *** NUEVO: LÓGICA DEL CHAT ***
-    // Maneja la recepción del mensaje del cliente y lo retransmite
+    // 3. Lógica del Chat
     socket.on('sendMessage', (message) => {
-        // io.emit() envía el evento a TODOS los sockets conectados (incluido el remitente)
         io.emit('chatMessage', { playerId: socket.id, message: message });
         console.log(`[CHAT] ${socket.id}: ${message}`);
     });
-    // ----------------------------------------------------
 
-    // 3. Maneja el movimiento del jugador
+    // 4. Maneja el movimiento del jugador
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
@@ -56,7 +52,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 4. Maneja la desconexión del jugador
+    // 5. Maneja la desconexión del jugador
     socket.on('disconnect', () => {
         console.log('Un usuario se ha desconectado. ID:', socket.id);
         
