@@ -7,14 +7,14 @@ const io = require('socket.io')(http);
 // Usa el puerto que Render asigne, o 3000 como fallback local
 const PORT = process.env.PORT || 3000; 
 
-// *** CAMBIO CLAVE PARA LA OPCIÓN B: ***
-// Sirve archivos estáticos (game.js, socket.io.js) desde la raíz del proyecto.
+// *** ÚNICO CAMBIO CLAVE: ELIMINADA LA FUNCIÓN app.get('/') ***
+// Esta línea ahora se encarga de TODO:
+// 1. Sirve index.html cuando se accede a la ruta raíz (/).
+// 2. Sirve todos los demás archivos estáticos (game.js, phaser.min.js, etc.) 
+//    con el tipo MIME correcto.
 app.use(express.static(__dirname));
 
-// Ruta principal: Envía index.html desde la raíz del proyecto.
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
-});
+// NOTA: La función app.get('/') ha sido eliminada.
 
 // Objeto para guardar el estado de todos los jugadores
 const players = {}; 
