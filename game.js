@@ -33,10 +33,14 @@ function preload ()
 
 function create ()
 {
-    // Necesitamos una referencia al objeto de la escena (this) para usarlo en las funciones de ayuda
     const scene = this;
 
-    socket = io();
+    // ------------------------------------------------------------------
+    // *** CAMBIO CLAVE: CONEXIÓN AL SERVIDOR GLOBAL DE RENDER ***
+    const RENDER_URL = 'https://platformermice.onrender.com/'; 
+    socket = io(RENDER_URL); 
+    // ------------------------------------------------------------------
+
     // Configuración de controles A (izquierda), D (derecha), W (salto)
     keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -44,24 +48,19 @@ function create ()
 
     // 1. CONFIGURACIÓN INICIAL (Plataforma Negra)
     platforms = this.physics.add.staticGroup();
-    // Dibuja un rectángulo negro para la plataforma (0x000000)
     const platformGraphics = this.add.graphics();
     platformGraphics.fillStyle(0x000000, 1); // Negro
     platformGraphics.fillRect(0, 0, 800, 32); 
-
-    // Crea la textura y el sprite estático para la plataforma
     platformGraphics.generateTexture('platformTexture', 800, 32);
     platforms.create(400, 584, 'platformTexture').refreshBody(); 
-    platformGraphics.destroy(); // Destruye el objeto gráfico para limpiar la memoria
+    platformGraphics.destroy(); // Limpieza de memoria
 
     // Lógica de Red y Multijugador
     socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
             if (players[id].playerId === socket.id) {
-                // LLAMADA CORREGIDA: Pasamos 'scene' como contexto
                 self = addPlayer(scene, players[id]); 
             } else {
-                // LLAMADA CORREGIDA: Pasamos 'scene' como contexto
                 addOtherPlayer(scene, otherPlayers, players[id]);
             }
         });
@@ -80,7 +79,6 @@ function create ()
 
     socket.on('playerMoved', function (playerInfo) {
         if (otherPlayers[playerInfo.playerId]) {
-            // Se usa setPosition para que el sprite se mueva directamente
             otherPlayers[playerInfo.playerId].setPosition(playerInfo.x, playerInfo.y);
         }
     });
@@ -120,28 +118,23 @@ function update ()
 
 // --- FUNCIONES DE AYUDA PARA CREAR SPRITES ---
 
-// Crea el sprite del jugador local (ROJO)
-// Se le pasa 'scene' para usar sus métodos de gráficos y física
 function addPlayer(scene, playerInfo) {
-    // Dibuja un rectángulo ROJO para nuestro jugador
     const playerGraphics = scene.add.graphics();
     playerGraphics.fillStyle(0xFF0000, 1); // Rojo
-    playerGraphics.fillRect(0, 0, 32, 32); // 32x32
+    playerGraphics.fillRect(0, 0, 32, 32); 
 
     playerGraphics.generateTexture('localPlayerTexture', 32, 32);
 
     const playerSprite = scene.physics.add.sprite(playerInfo.x, playerInfo.y, 'localPlayerTexture');
     playerSprite.setBounce(0.2);
     playerSprite.setCollideWorldBounds(true);
-    scene.physics.add.collider(playerSprite, platforms); // Colisión con la plataforma
+    scene.physics.add.collider(playerSprite, platforms); 
     
-    playerGraphics.destroy(); // Limpieza
-    return playerSprite; // Retorna el sprite creado para asignarlo a 'self'
+    playerGraphics.destroy(); 
+    return playerSprite; 
 }
 
-// Crea el sprite de otro jugador (AZUL)
 function addOtherPlayer(scene, otherPlayersRef, playerInfo) {
-    // Dibuja un rectángulo AZUL para otros jugadores
     const otherGraphics = scene.add.graphics();
     otherGraphics.fillStyle(0x0000FF, 1); // Azul
     otherGraphics.fillRect(0, 0, 32, 32);
@@ -150,10 +143,8 @@ function addOtherPlayer(scene, otherPlayersRef, playerInfo) {
     
     const otherPlayer = scene.physics.add.sprite(playerInfo.x, playerInfo.y, 'otherPlayerTexture');
     otherPlayer.setBounce(0.2);
-    scene.physics.add.collider(otherPlayer, platforms); // Colisión con la plataforma
+    scene.physics.add.collider(otherPlayer, platforms); 
     
-    otherGraphics.destroy(); // Limpieza
-    
-    // Lo guardamos en el objeto 'otherPlayers' usando su ID para referencia futura
+    otherGraphics.destroy(); 
     otherPlayersRef[playerInfo.playerId] = otherPlayer; 
 }
