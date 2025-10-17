@@ -4,51 +4,66 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-const PORT = process.env.PORT || 3000;
+// Usa el puerto que Render asigne, o 3000 como fallback local
+const PORT = process.env.PORT || 3000; 
 
-// Objeto global para mantener el estado de todos los jugadores
-const players = {}; 
-
-// Sirve archivos estáticos
-app.use(express.static(__dirname));
+// Servir archivos estáticos (el cliente HTML, game.js)
+app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(__dirname + '/public/index.html');
 });
 
-// Lógica de Conexión y Juego Online
-io.on('connection', (socket) => {
-    console.log('Un usuario se ha conectado:', socket.id);
+// Objeto para guardar el estado de todos los jugadores
+// Clave: socket.id
+// Valor: { x: number, y: number, playerId: string }
+const players = {}; 
 
-    // 1. Añade el nuevo jugador al objeto 'players' con una posición inicial
+io.on('connection', (socket) => {
+    console.log('Un usuario se ha conectado. ID:', socket.id);
+
+    // Crea un nuevo jugador y añádelo al objeto 'players'
     players[socket.id] = {
-        x: Math.floor(Math.random() * 700) + 50, // Posición X aleatoria
-        y: 400, // Posición Y inicial (un poco alto para caer a la plataforma)
+        x: Math.floor(Math.random() * 700) + 50, // Posición inicial aleatoria
+        y: 400,
         playerId: socket.id
     };
 
-    // 2. Envía la lista de jugadores actual al jugador que se acaba de conectar
+    // 1. Enviar el estado actual de los jugadores al nuevo jugador
     socket.emit('currentPlayers', players);
-    
-    // 3. Notifica a los otros jugadores sobre el nuevo jugador
+
+    // 2. Transmitir (broadcast) el nuevo jugador a todos los demás jugadores
     socket.broadcast.emit('newPlayer', players[socket.id]);
 
-    // 4. Escucha las actualizaciones de movimiento del cliente
+    // ----------------------------------------------------
+    // *** NUEVO: LÓGICA DEL CHAT ***
+    // Maneja la recepción del mensaje del cliente y lo retransmite
+    socket.on('sendMessage', (message) => {
+        // io.emit() envía el evento a TODOS los sockets conectados (incluido el remitente)
+        io.emit('chatMessage', { playerId: socket.id, message: message });
+        console.log(`[CHAT] ${socket.id}: ${message}`);
+    });
+    // ----------------------------------------------------
+
+    // 3. Maneja el movimiento del jugador
     socket.on('playerMovement', (movementData) => {
-        // Actualiza la posición del jugador en el servidor
-        players[socket.id].x = movementData.x;
-        players[socket.id].y = movementData.y;
-        
-        // Emite la posición actualizada de este jugador a todos los demás clientes
-        socket.broadcast.emit('playerMoved', players[socket.id]);
+        if (players[socket.id]) {
+            players[socket.id].x = movementData.x;
+            players[socket.id].y = movementData.y;
+            
+            // Transmite la posición actualizada del jugador a todos los demás
+            socket.broadcast.emit('playerMoved', players[socket.id]);
+        }
     });
 
-    // 5. Manejo de la Desconexión
+    // 4. Maneja la desconexión del jugador
     socket.on('disconnect', () => {
-        console.log('Usuario desconectado:', socket.id);
+        console.log('Un usuario se ha desconectado. ID:', socket.id);
+        
         // Elimina al jugador del objeto 'players'
         delete players[socket.id];
-        // Notifica a los otros jugadores que un jugador se ha ido
+        
+        // Emite un mensaje a todos los demás para que eliminen al jugador
         io.emit('disconnect', socket.id);
     });
 });
